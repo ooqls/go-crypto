@@ -1,11 +1,11 @@
-package token
+package crypto
 
 import (
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/braumsmilk/go-token/keys"
+	"github.com/braumsmilk/go-crypto/keys"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -28,7 +28,7 @@ func NewJwtToken(subj, aud, id, issuer string) (string, error) {
 	}
 	// c.ExpiresAt = int64(timeparse.UnixSeconds() + cfg.ValidityDurationSeconds)
 
-	token, err := keys.GetKey().Sign(c)
+	token, err := keys.GetJwtKey().Sign(c)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign claim: %v", err)
 	}
@@ -37,7 +37,7 @@ func NewJwtToken(subj, aud, id, issuer string) (string, error) {
 }
 
 func DecryptJwtToken(tokenstr string) (*jwt.Token, error) {
-	key := keys.GetKey()
+	key := keys.GetJwtKey()
 	jwtToken, err := key.Decrypt(tokenstr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt token: %v", err)

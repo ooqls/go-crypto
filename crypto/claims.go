@@ -1,4 +1,4 @@
-package token
+package crypto
 
 import (
 	"fmt"

@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/braumsmilk/go-crypto/keys"
 	"github.com/braumsmilk/go-registry"
-	"github.com/braumsmilk/go-token/keys"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -110,7 +110,12 @@ func InitKeys() {
 		panic(fmt.Errorf("failed to generate new RSA key: %v", err))
 	}
 
-	err = keys.Init(privKey, pubKey)
+	err = keys.InitJwt(privKey, pubKey)
+	if err != nil {
+		panic(fmt.Errorf("failed to init keys: %v", err))
+	}
+
+	err = keys.InitRSA(privKey, pubKey)
 	if err != nil {
 		panic(fmt.Errorf("failed to init keys: %v", err))
 	}
