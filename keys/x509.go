@@ -2,26 +2,124 @@ package keys
 
 import (
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"math/rand"
+	"net"
+	"os"
 	"time"
 )
 
-func CreateX509Certificate() (*x509.Certificate, *rsa.PrivateKey, error) {
+type option func(*x509.Certificate)
+
+func WithCommonName(name string) option {
+	return func(c *x509.Certificate) {
+		c.Subject.CommonName = name
+	}
+}
+
+func WithDNSNames(dnsNames []string) option {
+	return func(c *x509.Certificate) {
+		c.DNSNames = dnsNames
+	}
+}
+
+func WithIPAddresses(ipAddresses []net.IP) option {
+	return func(c *x509.Certificate) {
+		c.IPAddresses = ipAddresses
+	}
+}
+func WithEmailAddresses(emailAddresses []string) option {
+	return func(c *x509.Certificate) {
+		c.EmailAddresses = emailAddresses
+	}
+}
+
+func WithPermittedDNSDomainsCritical(critical bool) option {
+	return func(c *x509.Certificate) {
+		c.PermittedDNSDomainsCritical = critical
+	}
+}
+
+func WithPermittedDNSDomains(dnsNames []string) option {
+	return func(c *x509.Certificate) {
+		c.PermittedDNSDomains = dnsNames
+	}
+}
+func WithPermittedEmailAddresses(emailAddresses []string) option {
+	return func(c *x509.Certificate) {
+		c.PermittedEmailAddresses = emailAddresses
+	}
+}
+
+func WithPermittedURIDomains(uriDomains []string) option {
+	return func(c *x509.Certificate) {
+		c.PermittedURIDomains = uriDomains
+	}
+}
+
+func WithNotBefore(t time.Time) option {
+	return func(c *x509.Certificate) {
+		c.NotBefore = t
+	}
+}
+func WithNotAfter(t time.Time) option {
+	return func(c *x509.Certificate) {
+		c.NotAfter = t
+	}
+}
+func WithKeyUsage(ku x509.KeyUsage) option {
+	return func(c *x509.Certificate) {
+		c.KeyUsage = ku
+	}
+}
+func WithExtKeyUsage(eku []x509.ExtKeyUsage) option {
+	return func(c *x509.Certificate) {
+		c.ExtKeyUsage = eku
+	}
+}
+
+func CreateX509CACertificate(opts ...option) (*x509.Certificate, *rsa.PrivateKey, error) {
 	privKey, err := rsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())), 2048)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate private key: %v", err)
 	}
 
+	pkBytes, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal public key: %v", err)
+	}
+
+	hash := sha1.Sum(pkBytes)
+
 	template := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().UnixNano()),
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		SerialNumber:                big.NewInt(time.Now().UnixNano()),
+		NotBefore:                   time.Now(),
+		NotAfter:                    time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:                    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:                 []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		Subject:                     pkix.Name{CommonName: ""},
+		IsCA:                        true,
+		Issuer:                      pkix.Name{CommonName: ""},
+		PublicKey:                   &privKey.PublicKey,
+		SignatureAlgorithm:          x509.SHA256WithRSA,
+		BasicConstraintsValid:       true,
+		SubjectKeyId:                hash[:],
+		AuthorityKeyId:              hash[:],
+		CRLDistributionPoints:       []string{},
+		OCSPServer:                  []string{},
+		EmailAddresses:              []string{},
+		DNSNames:                    []string{},
+		IPAddresses:                 []net.IP{},
+		PermittedDNSDomainsCritical: false,
+		PermittedDNSDomains:         []string{},
+		PermittedEmailAddresses:     []string{},
+		PermittedURIDomains:         []string{},
+		PublicKeyAlgorithm:          x509.RSA,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.New(rand.NewSource(time.Now().UnixNano())), template, template, &privKey.PublicKey, privKey)
@@ -37,8 +135,61 @@ func CreateX509Certificate() (*x509.Certificate, *rsa.PrivateKey, error) {
 	return cert, privKey, nil
 }
 
-func CreateX509() (*X509, error) {
-	cert, privkey, err := CreateX509Certificate()
+func CreateX509Certificate(ca X509) (*x509.Certificate, *rsa.PrivateKey, error) {
+	privKey, err := rsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())), 2048)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to generate private key: %v", err)
+	}
+
+	template := &x509.Certificate{
+		SerialNumber:                big.NewInt(time.Now().UnixNano()),
+		NotBefore:                   time.Now(),
+		NotAfter:                    time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:                    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:                 []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		Subject:                     ca.crt.Subject,
+		Issuer:                      ca.crt.Subject,
+		PublicKey:                   &ca.crt.PublicKey,
+		SignatureAlgorithm:          x509.SHA256WithRSA,
+		BasicConstraintsValid:       true,
+		SubjectKeyId:                ca.crt.SubjectKeyId,
+		AuthorityKeyId:              ca.crt.AuthorityKeyId,
+		CRLDistributionPoints:       ca.crt.CRLDistributionPoints,
+		OCSPServer:                  ca.crt.OCSPServer,
+		EmailAddresses:              ca.crt.EmailAddresses,
+		DNSNames:                    ca.crt.DNSNames,
+		IPAddresses:                 ca.crt.IPAddresses,
+		PermittedDNSDomainsCritical: ca.crt.PermittedDNSDomainsCritical,
+		PermittedDNSDomains:         ca.crt.PermittedDNSDomains,
+		PermittedEmailAddresses:     ca.crt.PermittedEmailAddresses,
+		PermittedURIDomains:         ca.crt.PermittedURIDomains,
+		PublicKeyAlgorithm:          x509.RSA,
+	}
+
+	certDER, err := x509.CreateCertificate(rand.New(rand.NewSource(time.Now().UnixNano())), template, &ca.crt, &privKey.PublicKey, &ca.privKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create certificate: %v", err)
+	}
+
+	cert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse certificate: %v", err)
+	}
+
+	return cert, privKey, nil
+}
+
+func CreateX509CA() (*X509, error) {
+	cert, privkey, err := CreateX509CACertificate()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewX509(*cert, *privkey, *NewRand()), nil
+}
+
+func CreateX509(ca X509) (*X509, error) {
+	cert, privkey, err := CreateX509Certificate(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +205,22 @@ func NewX509(crt x509.Certificate, privKey rsa.PrivateKey, r rand.Rand) *X509 {
 	}
 }
 
-func ParseX509(pemB []byte) (*X509, error) {
+func ParseX509File(filename string) (*X509, error) {
+	pemB, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return ParseX509Bytes(pemB)
+}
+
+func ParseX509Bytes(pemB []byte) (*X509, error) {
 
 	privateKeyblock, certBlock := pem.Decode(pemB)
+
+	if privateKeyblock == nil || certBlock == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing the key or certificate")
+	}
 
 	priv, err := x509.ParsePKCS1PrivateKey(privateKeyblock.Bytes)
 	if err != nil {

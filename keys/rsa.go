@@ -55,13 +55,23 @@ func GetRsaKey() RSAKey {
 	return *rsakey
 }
 
-func ParseRSA(privkey, pubkey []byte) (*RSAKey, error) {
-	priv, err := x509.ParsePKCS1PrivateKey(privkey)
+func ParseRSA(privPem, pubPem []byte) (*RSAKey, error) {
+	// Decode private key PEM block
+	privBlock, _ := pem.Decode(privPem)
+	if privBlock == nil || privBlock.Type != "RSA PRIVATE KEY" {
+		return nil, fmt.Errorf("failed to decode PEM block containing RSA private key")
+	}
+	priv, err := x509.ParsePKCS1PrivateKey(privBlock.Bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	pubI, err := x509.ParsePKIXPublicKey(pubkey)
+	// Decode public key PEM block
+	pubBlock, _ := pem.Decode(pubPem)
+	if pubBlock == nil || (pubBlock.Type != "RSA PUBLIC KEY" && pubBlock.Type != "PUBLIC KEY") {
+		return nil, fmt.Errorf("failed to decode PEM block containing RSA public key")
+	}
+	pubI, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +82,6 @@ func ParseRSA(privkey, pubkey []byte) (*RSAKey, error) {
 	}
 
 	r := NewRand(int64(priv.D.Int64()))
-
 	return newRSAKey(*priv, *pub, *r), nil
 }
 

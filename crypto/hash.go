@@ -11,6 +11,6 @@ func GetDefaultHash() hash.Hash {
 	return h
 }
 
-func SetDefaultHash(h *hash.Hash) {
-	h = h
+func SetDefaultHash(newh hash.Hash) {
+	h = newh
 }

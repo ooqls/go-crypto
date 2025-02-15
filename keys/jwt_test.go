@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,9 +21,12 @@ func TestInit(t *testing.T) {
 
 	dec, err := jwtkey.Decrypt(enc)
 	assert.Nilf(t, err, "should be able to verify")
-	
+
 	claims, ok := dec.Claims.(jwt.MapClaims)
 	assert.Truef(t, ok, "should be able to verify")
+	actualData := claims["data"]
+	decodedData, err := base64.StdEncoding.DecodeString(actualData.(string))
+	assert.Nilf(t, err, "should be able to decode")
 
-	assert.Equalf(t, data, claims["data"], "should be able to verify")
+	assert.Equalf(t, data, decodedData, "should be able to verify")
 }

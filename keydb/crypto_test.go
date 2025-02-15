@@ -12,7 +12,10 @@ func initDb(t *testing.T) {
 	dbf, err := os.CreateTemp("/tmp", "test-*.db")
 	assert.Nilf(t, err, "should not fail to create temp file")
 
-	systemK, err := keys.CreateX509()
+	ca, err := keys.CreateX509CA()
+	assert.Nilf(t, err, "should not fail to create CA")
+	
+	systemK, err := keys.CreateX509(*ca)
 	assert.Nilf(t, err, "should not fail to create x509")
 
 	err = Init(dbf.Name(), *systemK)
@@ -28,7 +31,10 @@ func TestCryptoDatabase_setSystemKey(t *testing.T) {
 	assert.Nilf(t, err, "should not fail to check system key")
 	assert.Truef(t, isSystemk, "should be system key")
 
-	notSystemKey, err := keys.CreateX509()
+	ca, err := keys.CreateX509CA()
+	assert.Nilf(t, err, "should not fail to create CA")
+
+	notSystemKey, err := keys.CreateX509(*ca)
 	assert.Nilf(t, err, "should not fail to create x509")
 
 	isSystemk, err = db.IsSystemKey(notSystemKey)
