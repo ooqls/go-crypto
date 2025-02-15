@@ -281,3 +281,22 @@ func (x *X509) PublicKey() (rsa.PublicKey, []byte) {
 	b := x509.MarshalPKCS1PublicKey(pubKey)
 	return *pubKey, b
 }
+
+// gets the pem encoded private key and certificate in that order
+func (x *X509) Pem() ([]byte, []byte) {
+	keyB := x509.MarshalPKCS1PrivateKey(&x.privKey)
+	keyBlock := pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: keyB,
+	}
+
+	certBlock := pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: x.crt.Raw,
+	}
+
+	keyBytes := pem.EncodeToMemory(&keyBlock)
+	certBytes := pem.EncodeToMemory(&certBlock)
+
+	return keyBytes, certBytes
+}
