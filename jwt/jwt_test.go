@@ -7,10 +7,9 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/braumsmilk/go-crypto/testutils"
+	"github.com/ooqls/go-crypto/testutils"
 	"github.com/stretchr/testify/assert"
 )
-
 
 func getRsaKeyBytes() (priv []byte, pub []byte) {
 	k, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -50,5 +49,3 @@ func TestNewJwtToken(t *testing.T) {
 	assert.Nilf(t, err, "should not fail to decrypt token")
 	assert.NotNilf(t, jwtToken, "should have gotten a non-nil token")
 }
-
-

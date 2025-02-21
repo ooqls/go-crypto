@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/braumsmilk/go-crypto/keys"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/ooqls/go-crypto/keys"
 )
 
 var ErrExpiredToken error = errors.New("expired token")

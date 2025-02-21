@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/braumsmilk/go-crypto/keys"
+	"github.com/ooqls/go-crypto/keys"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +14,7 @@ func initDb(t *testing.T) {
 
 	ca, err := keys.CreateX509CA()
 	assert.Nilf(t, err, "should not fail to create CA")
-	
+
 	systemK, err := keys.CreateX509(*ca)
 	assert.Nilf(t, err, "should not fail to create x509")
 

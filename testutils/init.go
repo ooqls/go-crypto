@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/braumsmilk/go-crypto/keys"
-	"github.com/braumsmilk/go-registry"
+	"github.com/ooqls/go-crypto/keys"
+	"github.com/ooqls/go-registry"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )

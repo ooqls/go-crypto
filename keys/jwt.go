@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/braumsmilk/go-log"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/ooqls/go-log"
 	"go.uber.org/zap"
 )
 

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/braumsmilk/go-crypto/keys"
+	"github.com/ooqls/go-crypto/keys"
 )
 
 type CryptoDatabase interface {

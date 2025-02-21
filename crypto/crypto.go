@@ -4,8 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/braumsmilk/go-crypto/keys"
-	"github.com/braumsmilk/go-log"
+	"github.com/ooqls/go-crypto/keys"
+	"github.com/ooqls/go-log"
 	"go.uber.org/zap"
 )
 

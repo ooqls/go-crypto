@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/braumsmilk/go-crypto/keys"
+	"github.com/ooqls/go-crypto/keys"
 )
 
 var cdb CryptoDatabase = nil

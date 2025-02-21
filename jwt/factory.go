@@ -1,6 +1,6 @@
 package crypto
 
-import "github.com/braumsmilk/go-registry"
+import "github.com/ooqls/go-registry"
 
 type TokenFactory interface {
 	NewToken(subj string) (string, error)
