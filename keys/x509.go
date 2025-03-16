@@ -143,7 +143,7 @@ func CreateX509Certificate(ca X509) (*x509.Certificate, *rsa.PrivateKey, error) 
 
 	template := &x509.Certificate{
 		SerialNumber:                big.NewInt(time.Now().UnixNano()),
-		NotBefore:                   time.Now(),
+		NotBefore:                   ca.crt.NotBefore,
 		NotAfter:                    time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:                    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:                 []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
