@@ -99,7 +99,7 @@ func NewRSA() (*RSAKey, error) {
 func newRSAKey(privkey rsa.PrivateKey, pubkey rsa.PublicKey, r rand.Rand) *RSAKey {
 	return &RSAKey{
 		privkey: privkey,
-		pubkey:  privkey.PublicKey,
+		pubkey:  pubkey,
 		r:       r,
 	}
 }
