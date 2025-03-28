@@ -16,24 +16,25 @@ var ErrExpiredToken error = errors.New("expired token")
 // id is the identifier of the token
 // sub is the subject of the token ( eg. user id )
 // exp is the expiration time of the token
-func NewJwtToken(subj, aud, id, issuer string) (string, error) {
-
+// returns the token string, the expiration time, and any errors
+func NewJwtToken(subj, aud, id, issuer string) (string, *time.Time, error) {
+	exp := time.Now().Add(1000 * time.Second)
 	c := jwt.MapClaims{
 		"sub": subj,
 		"aud": aud,
 		"id":  id,
 		"iss": issuer,
-		"exp": jwt.NewNumericDate(time.Now().Add(1000 * time.Second)),
+		"exp": jwt.NewNumericDate(exp),
 		"isd": jwt.NewNumericDate(time.Now()),
 	}
 	// c.ExpiresAt = int64(timeparse.UnixSeconds() + cfg.ValidityDurationSeconds)
 
 	token, err := keys.GetJwtKey().Sign(c)
 	if err != nil {
-		return "", fmt.Errorf("failed to sign claim: %v", err)
+		return "", nil, fmt.Errorf("failed to sign claim: %v", err)
 	}
 
-	return token, nil
+	return token, &exp, nil
 }
 
 func DecryptJwtToken(tokenstr string) (*jwt.Token, error) {
