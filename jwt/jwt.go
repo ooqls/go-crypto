@@ -11,41 +11,13 @@ import (
 
 var ErrExpiredToken error = errors.New("expired token")
 
-func NewToken(token jwt.Token, tokenStr string) *Token {
-	return &Token{
-		token:    token,
-		tokenStr: tokenStr,
-	}
-}
-
-type Token struct {
-	token    jwt.Token
-	tokenStr string
-}
-
-func (t *Token) GetToken() jwt.Token {
-	return t.token
-}
-
-func (t *Token) String() string {
-	return t.tokenStr
-}
-
-func (t *Token) ExpiresAt() (*jwt.NumericDate, error) {
-	exp, err := t.token.Claims.GetExpirationTime()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get expiration time: %v", err)
-	}
-	return exp, nil
-}
-
 // audeience is the thing we are trying to authenticate against ( eg. chat.io )
 // issuer is the thing that issued the token ( eg. auth.io )
 // id is the identifier of the token
 // sub is the subject of the token ( eg. user id )
 // exp is the expiration time of the token
-// returns the token string, the expiration time, and any errors
-func NewJwtToken(subj, aud, id, issuer string) (*Token, error) {
+// returns the token string, the jwt token struct, and any errors
+func NewJwtToken(subj, aud, id, issuer string) (string, *jwt.Token, error) {
 	exp := time.Now().Add(1000 * time.Second)
 	c := jwt.MapClaims{
 		"sub": subj,
@@ -61,10 +33,10 @@ func NewJwtToken(subj, aud, id, issuer string) (*Token, error) {
 
 	tokenStr, err := keys.GetJwtKey().Sign(c)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign claim: %v", err)
+		return "", nil, fmt.Errorf("failed to sign claim: %v", err)
 	}
 
-	return &Token{token: *jwtToken, tokenStr: tokenStr}, nil
+	return tokenStr, jwtToken, nil
 }
 
 func DecryptJwtToken(tokenstr string) (*jwt.Token, error) {
