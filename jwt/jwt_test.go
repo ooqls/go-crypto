@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"testing"
 
+	"github.com/ooqls/go-crypto/keys"
 	"github.com/ooqls/go-crypto/testutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -41,8 +42,8 @@ func getRsaKeyBytes() (priv []byte, pub []byte) {
 
 func TestNewJwtToken(t *testing.T) {
 	testutils.InitKeys()
-
-	tknStr, jwtToken, err := NewJwtToken("1", "aud", "id", "issuer")
+	key := keys.GetJwtKey()
+	tknStr, jwtToken, err := NewJwtToken("1", "aud", "id", []string{"issuer"}, key)
 	assert.NotNilf(t, jwtToken, "should have gotten a non-nil token")
 	assert.Nilf(t, err, "should not error when getting new token")
 	parsedToken, err := DecryptJwtToken(tknStr)

@@ -2,11 +2,13 @@ module github.com/ooqls/go-crypto
 
 go 1.22.0
 
+replace github.com/ooqls/go-registry => /Users/samuelreynolds/github.com/ooqls/go-registry
+
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/ooqls/go-log v0.1.1
-	github.com/ooqls/go-registry v0.1.2
+	github.com/ooqls/go-registry v0.1.3
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.64.0
