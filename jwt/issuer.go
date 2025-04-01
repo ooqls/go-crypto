@@ -12,6 +12,7 @@ import (
 type TokenIssuer interface {
 	IssueToken(subj string, audience []string) (string, *jwt.Token, error)
 	IsIssuer(token *jwt.Token) bool
+	GetIssuer() string
 }
 
 func NewJwtTokenIssuer(cfg *registry.TokenConfiguration, key keys.JwtSigningKey) TokenIssuer {
@@ -73,4 +74,8 @@ func (f *jwtTokenIssuer) IsIssuer(token *jwt.Token) bool {
 	}
 
 	return strings.EqualFold(iss, f.cfg.Issuer)
+}
+
+func (f *jwtTokenIssuer) GetIssuer() string {
+	return f.cfg.Issuer
 }
