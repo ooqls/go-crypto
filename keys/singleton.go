@@ -58,7 +58,7 @@ func InitJwt(privKey []byte, pubKey []byte) error {
 		return err
 	}
 
-	key = &JwtKey{
+	jwtKey = &JwtKey{
 		rsakey: *rsakey,
 	}
 

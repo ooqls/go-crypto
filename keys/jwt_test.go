@@ -16,7 +16,7 @@ func TestInit(t *testing.T) {
 	assert.NotNil(t, jwtkey, "should be able to create jwt key")
 
 	data := []byte("hello world")
-	enc, err := jwtkey.Sign(jwt.MapClaims{"data": data})
+	enc, _, err := jwtkey.Sign(jwt.MapClaims{"data": data})
 	assert.Nilf(t, err, "should be able to sign")
 
 	dec, err := jwtkey.Decrypt(enc)

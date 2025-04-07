@@ -1,6 +1,7 @@
 package keys
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"sync"
 
@@ -9,7 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var key JwtSigningKey
 var m sync.Mutex = sync.Mutex{}
 var o sync.Once = sync.Once{}
 var l *zap.Logger = log.NewLogger("secure")
@@ -19,12 +19,12 @@ func GetJwtKey() JwtSigningKey {
 		m.Lock()
 		defer m.Unlock()
 
-		if key == nil {
+		if jwtKey == nil {
 			panic("please initialize secure key before using")
 		}
 	})
 
-	return key
+	return jwtKey
 }
 
 type SecureValue[T any] interface {
@@ -33,8 +33,9 @@ type SecureValue[T any] interface {
 }
 
 type JwtSigningKey interface {
-	Sign(claims jwt.Claims) (string, error)
+	Sign(claims jwt.Claims) (string, *jwt.Token, error)
 	Decrypt(token string) (*jwt.Token, error)
+	PublicKey() *rsa.PublicKey
 }
 
 func ParseJwtKey(privkey, pubkey []byte) (JwtSigningKey, error) {
@@ -58,9 +59,14 @@ type JwtKey struct {
 	rsakey RSAKey
 }
 
-func (k *JwtKey) Sign(claims jwt.Claims) (string, error) {
+func (k *JwtKey) Sign(claims jwt.Claims) (string, *jwt.Token, error) {	
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	return token.SignedString(&k.rsakey.privkey)
+	tokenStr, err := token.SignedString(&k.rsakey.privkey)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to sign claim: %v", err)
+	}
+	return tokenStr, token, nil
+
 }
 
 func (k *JwtKey) Decrypt(token string) (*jwt.Token, error) {
@@ -71,4 +77,8 @@ func (k *JwtKey) Decrypt(token string) (*jwt.Token, error) {
 
 		return &k.rsakey.pubkey, nil
 	})
+}
+
+func (k *JwtKey) PublicKey() *rsa.PublicKey {
+	return &k.rsakey.pubkey
 }

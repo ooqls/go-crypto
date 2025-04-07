@@ -43,9 +43,11 @@ func getRsaKeyBytes() (priv []byte, pub []byte) {
 func TestNewJwtToken(t *testing.T) {
 	testutils.InitKeys()
 	key := keys.GetJwtKey()
+	
 	tknStr, jwtToken, err := NewJwtToken("1", "aud", "id", []string{"issuer"}, key)
 	assert.NotNilf(t, jwtToken, "should have gotten a non-nil token")
 	assert.Nilf(t, err, "should not error when getting new token")
+	
 	parsedToken, err := DecryptJwtToken(tknStr)
 	assert.Nilf(t, err, "should not fail to decrypt token")
 	assert.NotNilf(t, parsedToken, "should have gotten a non-nil token")

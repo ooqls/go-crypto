@@ -1,8 +1,6 @@
 package jwt
 
 import (
-	"slices"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ooqls/go-crypto/keys"
@@ -10,70 +8,68 @@ import (
 )
 
 type TokenIssuer interface {
-	IssueToken(subj string, audience []string) (string, *jwt.Token, error)
-	IsIssuer(token *jwt.Token) bool
+	IssueToken(subj string) (string, *jwt.Token, error)
+	Decrypt(token string, claims jwt.Claims) (*jwt.Token, error)
 	GetIssuer() string
 }
 
+func newParserValidator(cfg *registry.TokenConfiguration) (*jwt.Parser, *jwt.Validator) {
+	var opts []jwt.ParserOption
+	for _, aud := range cfg.Audience {
+		opts = append(opts, jwt.WithAudience(aud))
+	}
+	opts = append(opts, jwt.WithIssuer(cfg.Issuer))
+	opts = append(opts, jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name}))
+	p := jwt.NewParser(opts...)	
+	v := jwt.NewValidator(opts...)
+	return p, v
+}
+
 func NewJwtTokenIssuer(cfg *registry.TokenConfiguration, key keys.JwtSigningKey) TokenIssuer {
+	p, v := newParserValidator(cfg)
 	return &jwtTokenIssuer{
 		key: key,
 		cfg: cfg,
+		parser: p,
+		validator: v,
 	}
 }
 
 func NewDefaultJwtTokenIssuer() TokenIssuer {
 	r := registry.Get()
+	p, v := newParserValidator(&r.TokenConfiguration)
 	return &jwtTokenIssuer{
 		key: keys.GetJwtKey(),
 		cfg: &r.TokenConfiguration,
+		parser: p,
+		validator: v,
 	}
+
 }
 
 type jwtTokenIssuer struct {
-	key keys.JwtSigningKey
-	cfg *registry.TokenConfiguration
+	key       keys.JwtSigningKey
+	cfg       *registry.TokenConfiguration
+	parser *jwt.Parser
+	validator *jwt.Validator
 }
 
-func (f *jwtTokenIssuer) IssueToken(subj string, audience []string) (string, *jwt.Token, error) {
-	if len(audience) == 0 {
-		return "", nil, ErrInvalidAudience
-	}
-
+func (f *jwtTokenIssuer) IssueToken(subj string) (string, *jwt.Token, error) {
+	// Check if all audience values in the token are also in our config
 	if subj == "" {
 		return "", nil, ErrInvalidSubject
 	}
-	// Check if all audience values in the token are also in our config
-	for _, a := range audience {
-		if !slices.Contains(f.cfg.Audience, a) {
-			return "", nil, ErrInvalidAudience
-		}
-	}
 
-	return NewJwtToken(subj, f.cfg.GenerateId(), f.cfg.Issuer, audience, f.key)
+
+	return NewJwtToken(subj, f.cfg.GenerateId(), f.cfg.Issuer, f.cfg.Audience, f.key)
 }
 
-func (f *jwtTokenIssuer) IsIssuer(token *jwt.Token) bool {
-	claims := token.Claims.(jwt.MapClaims)
+func (f *jwtTokenIssuer) Decrypt(token string, claims jwt.Claims) (*jwt.Token, error) {
+	jwtToken, err := f.parser.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+		return f.key.PublicKey(), nil
+	})
 
-	iss, err := claims.GetIssuer()
-	if err != nil {
-		return false
-	}
-
-	aud, err := claims.GetAudience()
-	if err != nil {
-		return false
-	}
-
-	// Check if all audience values in the token are also in our config
-	for _, a := range aud {
-		if !slices.Contains(f.cfg.Audience, a) {
-			return false
-		}
-	}
-
-	return strings.EqualFold(iss, f.cfg.Issuer)
+	return jwtToken, err
 }
 
 func (f *jwtTokenIssuer) GetIssuer() string {
