@@ -1,15 +1,17 @@
 package jwt
 
 import (
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/ooqls/go-crypto/keys"
 	"github.com/ooqls/go-registry"
 )
 
-type TokenIssuer interface {
-	IssueToken(subj string) (string, *jwt.Token, error)
-	Decrypt(token string, claims jwt.Claims) (*jwt.Token, error)
+type TokenIssuer[C any] interface {
+	IssueToken(subj string, customClaim C) (string, *jwt.Token, error)
+	Decrypt(token string) (*jwt.Token, C, error)
 	GetIssuer() string
 }
 
@@ -25,9 +27,10 @@ func newParserValidator(cfg *registry.TokenConfiguration) (*jwt.Parser, *jwt.Val
 	return p, v
 }
 
-func NewJwtTokenIssuer(cfg *registry.TokenConfiguration, key keys.JwtSigningKey) TokenIssuer {
+func NewJwtTokenIssuer[C any](cfg *registry.TokenConfiguration, 
+		key keys.JwtSigningKey) TokenIssuer[C] {
 	p, v := newParserValidator(cfg)
-	return &jwtTokenIssuer{
+	return &jwtTokenIssuer[C]{
 		key: key,
 		cfg: cfg,
 		parser: p,
@@ -35,10 +38,10 @@ func NewJwtTokenIssuer(cfg *registry.TokenConfiguration, key keys.JwtSigningKey)
 	}
 }
 
-func NewDefaultJwtTokenIssuer() TokenIssuer {
+func NewDefaultJwtTokenIssuer[C any]() TokenIssuer[C] {
 	r := registry.Get()
 	p, v := newParserValidator(&r.TokenConfiguration)
-	return &jwtTokenIssuer{
+	return &jwtTokenIssuer[C]{
 		key: keys.GetJwtKey(),
 		cfg: &r.TokenConfiguration,
 		parser: p,
@@ -47,31 +50,50 @@ func NewDefaultJwtTokenIssuer() TokenIssuer {
 
 }
 
-type jwtTokenIssuer struct {
+type jwtTokenIssuer[C any] struct {
 	key       keys.JwtSigningKey
 	cfg       *registry.TokenConfiguration
 	parser *jwt.Parser
 	validator *jwt.Validator
 }
 
-func (f *jwtTokenIssuer) IssueToken(subj string) (string, *jwt.Token, error) {
+func (f *jwtTokenIssuer[C]) IssueToken(subject string, customClaim C) (string, *jwt.Token, error) {
 	// Check if all audience values in the token are also in our config
-	if subj == "" {
+	if subject == "" {
 		return "", nil, ErrInvalidSubject
 	}
 
+	id := uuid.New().String()
+	regClaims := jwt.RegisteredClaims{
+		Issuer: f.cfg.Issuer,
+		Subject: subject,
+		Audience: f.cfg.Audience,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(f.cfg.ValidityDurationSeconds))),
+		NotBefore: jwt.NewNumericDate(time.Now()),
+		IssuedAt: jwt.NewNumericDate(time.Now()),
+		ID: id,
+	}
 
-	return NewJwtToken(subj, f.cfg.GenerateId(), f.cfg.Issuer, f.cfg.Audience, f.key)
+	claim := ClaimsWrapper[C]{
+		RegisteredClaims: regClaims,
+		CustomClaims: customClaim,
+	}
+
+	return f.key.Sign(claim)
 }
 
-func (f *jwtTokenIssuer) Decrypt(token string, claims jwt.Claims) (*jwt.Token, error) {
-	jwtToken, err := f.parser.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+func (f *jwtTokenIssuer[C]) Decrypt(token string) (*jwt.Token, C, error) {
+	
+	claimWrapper := ClaimsWrapper[C]{}
+	jwtToken, err := f.parser.ParseWithClaims(token, &claimWrapper, func(t *jwt.Token) (interface{}, error) {
 		return f.key.PublicKey(), nil
 	})
 
-	return jwtToken, err
+	
+
+	return jwtToken, claimWrapper.CustomClaims, err
 }
 
-func (f *jwtTokenIssuer) GetIssuer() string {
+func (f *jwtTokenIssuer[C]) GetIssuer() string {
 	return f.cfg.Issuer
 }

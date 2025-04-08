@@ -22,27 +22,30 @@ func TestIsIssuer(t *testing.T) {
 		TokenConfiguration: registry.TokenConfiguration{
 			Audience: []string{"aud", "aud2"},
 			Issuer:   "issuer1",
+			ValidityDurationSeconds: 60 * 60,
 		},
 	})
 
 	subj := "123"
-	issuer := NewDefaultJwtTokenIssuer()
-	issuer2 := NewJwtTokenIssuer(&registry.TokenConfiguration{
+	issuer := NewDefaultJwtTokenIssuer[map[string]string]()
+	issuer2 := NewJwtTokenIssuer[map[string]string](&registry.TokenConfiguration{
 		Audience: []string{"aud3", "aud4"},
 		Issuer:   "issuer2",
 	}, keys.JWT())
 
-	tokenStr, _, err := issuer.IssueToken(subj)
+	tokenStr, _, err := issuer.IssueToken(subj, map[string]string{
+		"test": "hello",
+	})
+	
 	assert.Nil(t, err)
-	claims := TokenClaims{}
-	jwtToken, err := issuer.Decrypt(tokenStr, &claims)
+
+	jwtToken, claims, err := issuer.Decrypt(tokenStr)
 	assert.NotNilf(t, jwtToken, "should have gotten a jwt token")
 	assert.Nilf(t, err, "should not have gotten an error from is issuer")
 	assert.Truef(t, jwtToken.Valid, "token should be valid")
-	assert.NotEmpty(t, claims.Issuer)
+	assert.NotEmpty(t, claims["test"])
 
-	notClaims := TokenClaims{}
-	notJwtToken, err := issuer2.Decrypt(tokenStr, &notClaims)
+	notJwtToken, _, err := issuer2.Decrypt(tokenStr)
 	assert.NotNilf(t, err, "should not have gotten an error")
 	assert.Falsef(t, notJwtToken.Valid, "token should not be valid")
 }
