@@ -16,6 +16,8 @@ github.com/mattn/go-sqlite3 v1.14.24 h1:tpSp2G2KyMnnQu99ngJ47EIkWVmliIizyZBfPrBW
 github.com/mattn/go-sqlite3 v1.14.24/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/ooqls/go-log v0.1.1 h1:c/aBPqh0QNXFIBExYiiF3Xct9MPi0vh1l+5dV+2UA5k=
 github.com/ooqls/go-log v0.1.1/go.mod h1:aKQ+VmfbiWUv7H+L/hXI78VkGYxX4pGDy41S/hNVi0Q=
+github.com/ooqls/go-registry v0.1.6 h1:WeQlovUV+ii/4lYNEW9E17JD/S9s8NKxOxSfgnn+i4c=
+github.com/ooqls/go-registry v0.1.6/go.mod h1:9RT7iQBPMB/qNpCHYh/2LSlUL3bJsdXEDYWhPwSeDDE=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
