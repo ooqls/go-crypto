@@ -14,8 +14,3 @@ type ClaimsWrapper[C any] struct {
 	CustomClaims C `json:"custom_claims"`
 
 }
-
-type Claims interface {
-	jwt.Claims
-	SetRegisteredClaims(regClaims jwt.RegisteredClaims)
-}	
