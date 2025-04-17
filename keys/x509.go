@@ -122,6 +122,10 @@ func CreateX509CACertificate(opts ...option) (*x509.Certificate, *rsa.PrivateKey
 		PublicKeyAlgorithm:          x509.RSA,
 	}
 
+	for _, o := range opts {
+		o(template)
+	}
+
 	certDER, err := x509.CreateCertificate(rand.New(rand.NewSource(time.Now().UnixNano())), template, template, &privKey.PublicKey, privKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create certificate: %v", err)
@@ -135,7 +139,7 @@ func CreateX509CACertificate(opts ...option) (*x509.Certificate, *rsa.PrivateKey
 	return cert, privKey, nil
 }
 
-func CreateX509Certificate(ca X509) (*x509.Certificate, *rsa.PrivateKey, error) {
+func CreateX509Certificate(ca X509, opts ...option) (*x509.Certificate, *rsa.PrivateKey, error) {
 	privKey, err := rsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())), 2048)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate private key: %v", err)
@@ -166,6 +170,10 @@ func CreateX509Certificate(ca X509) (*x509.Certificate, *rsa.PrivateKey, error) 
 		PublicKeyAlgorithm:          x509.RSA,
 	}
 
+	for _, o := range opts {
+		o(template)
+	}
+
 	certDER, err := x509.CreateCertificate(rand.New(rand.NewSource(time.Now().UnixNano())), template, &ca.crt, &privKey.PublicKey, &ca.privKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create certificate: %v", err)
@@ -179,8 +187,8 @@ func CreateX509Certificate(ca X509) (*x509.Certificate, *rsa.PrivateKey, error) 
 	return cert, privKey, nil
 }
 
-func CreateX509CA() (*X509, error) {
-	cert, privkey, err := CreateX509CACertificate()
+func CreateX509CA(opts ...option) (*X509, error) {
+	cert, privkey, err := CreateX509CACertificate(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -188,8 +196,8 @@ func CreateX509CA() (*X509, error) {
 	return NewX509(*cert, *privkey, *NewRand()), nil
 }
 
-func CreateX509(ca X509) (*X509, error) {
-	cert, privkey, err := CreateX509Certificate(ca)
+func CreateX509(ca X509, opts ...option) (*X509, error) {
+	cert, privkey, err := CreateX509Certificate(ca, opts...)
 	if err != nil {
 		return nil, err
 	}

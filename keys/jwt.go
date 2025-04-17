@@ -3,29 +3,13 @@ package keys
 import (
 	"crypto/rsa"
 	"fmt"
-	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ooqls/go-log"
 	"go.uber.org/zap"
 )
 
-var m sync.Mutex = sync.Mutex{}
-var o sync.Once = sync.Once{}
 var l *zap.Logger = log.NewLogger("secure")
-
-func GetJwtKey() JwtSigningKey {
-	o.Do(func() {
-		m.Lock()
-		defer m.Unlock()
-
-		if jwtKey == nil {
-			panic("please initialize secure key before using")
-		}
-	})
-
-	return jwtKey
-}
 
 type SecureValue[T any] interface {
 	Delete()
@@ -59,7 +43,7 @@ type JwtKey struct {
 	rsakey RSAKey
 }
 
-func (k *JwtKey) Sign(claims jwt.Claims) (string, *jwt.Token, error) {	
+func (k *JwtKey) Sign(claims jwt.Claims) (string, *jwt.Token, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	tokenStr, err := token.SignedString(&k.rsakey.privkey)
 	if err != nil {

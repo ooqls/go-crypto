@@ -42,7 +42,7 @@ func NewDefaultJwtTokenIssuer[C any]() TokenIssuer[C] {
 	r := registry.Get()
 	p, v := newParserValidator(&r.TokenConfiguration)
 	return &jwtTokenIssuer[C]{
-		key: keys.GetJwtKey(),
+		key: keys.JWT(),
 		cfg: &r.TokenConfiguration,
 		parser: p,
 		validator: v,
