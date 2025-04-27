@@ -83,6 +83,12 @@ func WithExtKeyUsage(eku []x509.ExtKeyUsage) option {
 	}
 }
 
+func WithTemplate(template x509.Certificate) option {
+	return func(c *x509.Certificate) {
+		*c = template
+	}
+}
+
 func CreateX509CACertificate(opts ...option) (*x509.Certificate, *rsa.PrivateKey, error) {
 	privKey, err := rsa.GenerateKey(rand.New(rand.NewSource(time.Now().UnixNano())), 2048)
 	if err != nil {

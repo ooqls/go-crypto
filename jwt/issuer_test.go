@@ -28,7 +28,7 @@ func TestIsIssuer(t *testing.T) {
 
 	subj := "123"
 	issuer := NewDefaultJwtTokenIssuer[map[string]string]()
-	issuer2 := NewJwtTokenIssuer[map[string]string](&registry.TokenConfiguration{
+	issuer2 := NewJwtTokenIssuer[map[string]string](&TokenConfiguration{
 		Audience: []string{"aud3", "aud4"},
 		Issuer:   "issuer2",
 	}, keys.JWT())

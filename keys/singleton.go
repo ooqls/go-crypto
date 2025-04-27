@@ -9,7 +9,7 @@ import (
 
 var m sync.Mutex = sync.Mutex{}
 var jwtKey *JwtKey = nil
-var cryptKey Key = nil
+var rsaKey Key = nil
 var caKey *X509 = nil
 
 func InitDefault() error {
@@ -32,7 +32,7 @@ func InitDefault() error {
 	}
 
 	jwtKey = NewJWTKey(*jwt)
-	cryptKey = cert
+	rsaKey = cert
 	caKey = ca
 
 	return err
@@ -53,6 +53,13 @@ func InitCA(key, cert []byte) error {
 	return nil
 }
 
+func SetCA(newCa *X509) {
+	m.Lock()
+	defer m.Unlock()
+
+	caKey = newCa
+}
+
 func InitRSA(privkey, pubkey []byte) error {
 	m.Lock()
 	defer m.Unlock()
@@ -62,9 +69,18 @@ func InitRSA(privkey, pubkey []byte) error {
 		return err
 	}
 
-	cryptKey = rsakey
+	rsaKey = rsakey
 	return nil
 }
+
+func SetRSA(k Key) {
+	m.Lock()
+	defer m.Unlock()
+
+	rsaKey = k
+}
+
+
 
 func InitJwt(privKey []byte, pubKey []byte) error {
 	m.Lock()
@@ -83,15 +99,22 @@ func InitJwt(privKey []byte, pubKey []byte) error {
 	return nil
 }
 
-func Crypto() Key {
+func SetJwt(newJwt *JwtKey) {
 	m.Lock()
 	defer m.Unlock()
 
-	if cryptKey == nil {
+	jwtKey = newJwt
+}
+
+func RSA() Key {
+	m.Lock()
+	defer m.Unlock()
+
+	if rsaKey == nil {
 		panic("please initialize crypto before using")
 	}
 
-	return cryptKey
+	return rsaKey
 }
 
 func JWT() JwtSigningKey {

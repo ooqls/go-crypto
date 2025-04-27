@@ -70,7 +70,7 @@ func Decrypt(data []byte) ([]byte, error) {
 }
 
 func RSAEncrypt(data []byte) ([]byte, error) {
-	keys := keys.Crypto()
+	keys := keys.RSA()
 	enc, err := keys.Encrypt(data)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func RSAEncrypt(data []byte) ([]byte, error) {
 }
 
 func RSADecrypt(data []byte) ([]byte, error) {
-	keys := keys.Crypto()
+	keys := keys.RSA()
 	dec, err := keys.Decrypt([]byte(data))
 	if err != nil {
 		return nil, err

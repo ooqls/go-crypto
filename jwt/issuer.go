@@ -6,7 +6,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/ooqls/go-crypto/keys"
-	"github.com/ooqls/go-registry"
 )
 
 type TokenIssuer[C any] interface {
@@ -15,36 +14,42 @@ type TokenIssuer[C any] interface {
 	GetIssuer() string
 }
 
-func newParserValidator(cfg *registry.TokenConfiguration) (*jwt.Parser, *jwt.Validator) {
+func newParserValidator(cfg *TokenConfiguration) (*jwt.Parser, *jwt.Validator) {
 	var opts []jwt.ParserOption
 	for _, aud := range cfg.Audience {
 		opts = append(opts, jwt.WithAudience(aud))
 	}
 	opts = append(opts, jwt.WithIssuer(cfg.Issuer))
 	opts = append(opts, jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Name}))
-	p := jwt.NewParser(opts...)	
+	p := jwt.NewParser(opts...)
 	v := jwt.NewValidator(opts...)
 	return p, v
 }
 
-func NewJwtTokenIssuer[C any](cfg *registry.TokenConfiguration, 
-		key keys.JwtSigningKey) TokenIssuer[C] {
+func NewJwtTokenIssuer[C any](cfg *TokenConfiguration,
+	key keys.JwtSigningKey) TokenIssuer[C] {
 	p, v := newParserValidator(cfg)
 	return &jwtTokenIssuer[C]{
-		key: key,
-		cfg: cfg,
-		parser: p,
+		key:       key,
+		cfg:       cfg,
+		parser:    p,
 		validator: v,
 	}
 }
 
 func NewDefaultJwtTokenIssuer[C any]() TokenIssuer[C] {
-	r := registry.Get()
-	p, v := newParserValidator(&r.TokenConfiguration)
+	tokenCfg := TokenConfiguration{
+		Audience:                []string{"test"},
+		Issuer:                  "default",
+		IdGenType:               "uuid",
+		ValidityDurationSeconds: 60 * 10,
+	}
+
+	p, v := newParserValidator(&tokenCfg)
 	return &jwtTokenIssuer[C]{
-		key: keys.JWT(),
-		cfg: &r.TokenConfiguration,
-		parser: p,
+		key:       keys.JWT(),
+		cfg:       &tokenCfg,
+		parser:    p,
 		validator: v,
 	}
 
@@ -52,8 +57,8 @@ func NewDefaultJwtTokenIssuer[C any]() TokenIssuer[C] {
 
 type jwtTokenIssuer[C any] struct {
 	key       keys.JwtSigningKey
-	cfg       *registry.TokenConfiguration
-	parser *jwt.Parser
+	cfg       *TokenConfiguration
+	parser    *jwt.Parser
 	validator *jwt.Validator
 }
 
@@ -65,31 +70,29 @@ func (f *jwtTokenIssuer[C]) IssueToken(subject string, customClaim C) (string, *
 
 	id := uuid.New().String()
 	regClaims := jwt.RegisteredClaims{
-		Issuer: f.cfg.Issuer,
-		Subject: subject,
-		Audience: f.cfg.Audience,
+		Issuer:    f.cfg.Issuer,
+		Subject:   subject,
+		Audience:  f.cfg.Audience,
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(f.cfg.ValidityDurationSeconds))),
 		NotBefore: jwt.NewNumericDate(time.Now()),
-		IssuedAt: jwt.NewNumericDate(time.Now()),
-		ID: id,
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ID:        id,
 	}
 
 	claim := ClaimsWrapper[C]{
 		RegisteredClaims: regClaims,
-		CustomClaims: customClaim,
+		CustomClaims:     customClaim,
 	}
 
 	return f.key.Sign(claim)
 }
 
 func (f *jwtTokenIssuer[C]) Decrypt(token string) (*jwt.Token, C, error) {
-	
+
 	claimWrapper := ClaimsWrapper[C]{}
 	jwtToken, err := f.parser.ParseWithClaims(token, &claimWrapper, func(t *jwt.Token) (interface{}, error) {
 		return f.key.PublicKey(), nil
 	})
-
-	
 
 	return jwtToken, claimWrapper.CustomClaims, err
 }

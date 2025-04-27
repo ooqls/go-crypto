@@ -123,3 +123,7 @@ func (r *RSAKey) Decrypt(data []byte) ([]byte, error) {
 func (r *RSAKey) PublicKey() (rsa.PublicKey, []byte) {
 	return r.pubkey, x509.MarshalPKCS1PublicKey(&r.pubkey)
 }
+
+func (r *RSAKey) PrivateKey() rsa.PrivateKey {
+	return r.privkey
+}
