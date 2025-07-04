@@ -121,7 +121,7 @@ func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, 
 		return nil, err
 	}
 
-	iv := make([]byte, gcm.NonceSize())
+	iv := make([]byte, SALT_SIZE)
 	rand.Read(iv)
 
 	encrypted := gcm.Seal(nil, iv, data, nil)
