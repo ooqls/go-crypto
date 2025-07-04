@@ -1,6 +1,11 @@
 package crypto
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/pbkdf2"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 
@@ -47,6 +52,17 @@ func NewRsaAlgorithm() Algorithm {
 	}
 }
 
+func NewAESGCMAlgorithm(password string, salt [SALT_SIZE]byte) Algorithm {
+	return &GenericAlgorithm{
+		EncryptFunc: func(data []byte) ([]byte, error) {
+			return AESGCMEncrypt(password, salt, data)
+		},
+		DecryptFunc: func(data []byte) ([]byte, error) {
+			return AESGCMDecrypt(password, data)
+		},
+	}
+}
+
 func NewDefaultAlgorithm() Algorithm {
 	return &GenericAlgorithm{
 		EncryptFunc: func(data []byte) ([]byte, error) {
@@ -87,4 +103,59 @@ func RSADecrypt(data []byte) ([]byte, error) {
 	}
 
 	return DecryptedData(dec), nil
+}
+
+func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
+	derivedKey, err := pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(derivedKey)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	iv := make([]byte, gcm.NonceSize())
+	rand.Read(iv)
+
+	encrypted := gcm.Seal(nil, iv, data, nil)
+	payload := append(iv, salt[:]...)
+	payload = append(payload, encrypted...)
+	return payload, nil
+}
+
+func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
+	iv := data[:IV_SIZE]
+	data = data[IV_SIZE:]
+
+	salt := data[:SALT_SIZE]
+	data = data[SALT_SIZE:]
+
+	derivedKey, err := pbkdf2.Key(sha256.New, password, salt, 10000, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	aesCipher, err := aes.NewCipher(derivedKey)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		return nil, err
+	}
+
+	decrypted, err := gcm.Open(nil, iv, data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return decrypted, nil
 }
