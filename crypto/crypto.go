@@ -63,6 +63,17 @@ func NewAESGCMAlgorithm(password string, salt [SALT_SIZE]byte) Algorithm {
 	}
 }
 
+func NewAESGCMAlgorithmWithKey(key []byte, salt [SALT_SIZE]byte) Algorithm {
+	return &GenericAlgorithm{
+		EncryptFunc: func(data []byte) ([]byte, error) {
+			return AESGCMEncryptWithKey(key, salt, data)
+		},
+		DecryptFunc: func(data []byte) ([]byte, error) {
+			return AESGCMDecryptWithKey(key, data)
+		},
+	}
+}
+
 func NewDefaultAlgorithm() Algorithm {
 	return &GenericAlgorithm{
 		EncryptFunc: func(data []byte) ([]byte, error) {
@@ -111,23 +122,7 @@ func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, 
 		return nil, err
 	}
 
-	block, err := aes.NewCipher(derivedKey)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	iv := make([]byte, SALT_SIZE)
-	rand.Read(iv)
-
-	encrypted := gcm.Seal(nil, iv, data, nil)
-	payload := append(iv, salt[:]...)
-	payload = append(payload, encrypted...)
-	return payload, nil
+	return AESGCMEncryptWithKey(derivedKey, salt, data)
 }
 
 func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
@@ -148,6 +143,49 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 	}
 
 	gcm, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		return nil, err
+	}
+
+	decrypted, err := gcm.Open(nil, iv, data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return decrypted, nil
+}
+
+func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	iv := make([]byte, IV_SIZE)
+	rand.Read(iv)
+
+	encrypted := gcm.Seal(nil, iv, data, nil)
+	payload := append(iv, salt[:]...)
+	payload = append(payload, encrypted...)
+	return payload, nil
+}
+
+func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
+	iv := data[:IV_SIZE]
+	data = data[IV_SIZE:]
+	data = data[SALT_SIZE:]
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
 	}
