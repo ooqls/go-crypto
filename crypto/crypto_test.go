@@ -11,6 +11,7 @@ func TestAESGCM_encrypt(t *testing.T) {
 	data := []byte("hello world")
 	var salt [SALT_SIZE]byte
 	rand.Read(salt[:])
+
 	encrypted, err := AESGCMEncrypt(password, salt, data)
 	if err != nil {
 		t.Fatal(err)

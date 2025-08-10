@@ -126,13 +126,12 @@ func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, 
 }
 
 func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
-	iv := data[:IV_SIZE]
-	data = data[IV_SIZE:]
+	salt, iv, encrypted, err := ParseAESGCM(data)
+	if err != nil {
+		return nil, err
+	}
 
-	salt := data[:SALT_SIZE]
-	data = data[SALT_SIZE:]
-
-	derivedKey, err := pbkdf2.Key(sha256.New, password, salt, 10000, 32)
+	derivedKey, err := pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +146,7 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	decrypted, err := gcm.Open(nil, iv, data, nil)
+	decrypted, err := gcm.Open(data[:0], iv[:], encrypted, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -166,19 +165,18 @@ func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte
 		return nil, err
 	}
 
-	iv := make([]byte, IV_SIZE)
-	rand.Read(iv)
+	iv := [IV_SIZE]byte{}
+	rand.Read(iv[:])
 
-	encrypted := gcm.Seal(nil, iv, data, nil)
-	payload := append(iv, salt[:]...)
-	payload = append(payload, encrypted...)
-	return payload, nil
+	encrypted := gcm.Seal(data[:0], iv[:], data, nil)
+	return EncodeAESGCM(salt, iv, encrypted)
 }
 
 func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
-	iv := data[:IV_SIZE]
-	data = data[IV_SIZE:]
-	data = data[SALT_SIZE:]
+	_, iv, encrypted, err := ParseAESGCM(data)
+	if err != nil {
+		return nil, err
+	}
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -190,10 +188,39 @@ func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	decrypted, err := gcm.Open(nil, iv, data, nil)
+	decrypted, err := gcm.Open(nil, iv[:], encrypted, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return decrypted, nil
+}
+
+func ParseAESGCM(data []byte) (salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte, err error) {
+	salt = [SALT_SIZE]byte{}
+	iv = [IV_SIZE]byte{}
+
+	decoded, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		return salt, iv, encrypted, ErrInvalidData
+	}
+
+	if len(decoded) < SALT_SIZE+IV_SIZE {
+		return salt, iv, encrypted, ErrDataTooShort
+	}
+
+	copy(salt[:], decoded[:SALT_SIZE])
+	copy(iv[:], decoded[SALT_SIZE:SALT_SIZE+IV_SIZE])
+	encrypted = decoded[SALT_SIZE+IV_SIZE:]
+
+	return
+}
+
+func EncodeAESGCM(salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte) ([]byte, error) {
+	payload := append(salt[:], iv[:]...)
+	payload = append(payload, encrypted...)
+
+	encoded := base64.StdEncoding.EncodeToString(payload)
+
+	return []byte(encoded), nil
 }
