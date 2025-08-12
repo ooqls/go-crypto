@@ -124,6 +124,6 @@ func (r *RSAKey) PublicKey() (rsa.PublicKey, []byte) {
 	return r.pubkey, x509.MarshalPKCS1PublicKey(&r.pubkey)
 }
 
-func (r *RSAKey) PrivateKey() rsa.PrivateKey {
-	return r.privkey
+func (r *RSAKey) PrivateKey() (rsa.PrivateKey, []byte) {
+	return r.privkey, x509.MarshalPKCS1PrivateKey(&r.privkey)
 }

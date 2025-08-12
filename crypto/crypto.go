@@ -23,11 +23,13 @@ type DecryptedData []byte
 type Algorithm interface {
 	Encrypt(data []byte) (EncryptedData, error)
 	Decrypt(data EncryptedData) (DecryptedData, error)
+	GetKey() ([]byte, error)
 }
 
 type GenericAlgorithm struct {
 	EncryptFunc func(data []byte) ([]byte, error)
 	DecryptFunc func(data []byte) ([]byte, error)
+	KeyFunc     func() ([]byte, error)
 }
 
 func (g *GenericAlgorithm) Encrypt(data []byte) (EncryptedData, error) {
@@ -38,10 +40,15 @@ func (g *GenericAlgorithm) Decrypt(data EncryptedData) (DecryptedData, error) {
 	return g.DecryptFunc(data)
 }
 
+func (g *GenericAlgorithm) GetKey() ([]byte, error) {
+	return g.KeyFunc()
+}
+
 func NewBase64Algorithm() Algorithm {
 	return &GenericAlgorithm{
 		EncryptFunc: Encrypt,
 		DecryptFunc: Decrypt,
+		KeyFunc:     func() ([]byte, error) { return nil, nil },
 	}
 }
 
@@ -49,6 +56,11 @@ func NewRsaAlgorithm() Algorithm {
 	return &GenericAlgorithm{
 		EncryptFunc: RSAEncrypt,
 		DecryptFunc: RSADecrypt,
+		KeyFunc:     func() ([]byte, error) { 
+			key := keys.RSA()
+			_, keyBytes := key.PrivateKey()
+			return keyBytes, nil 
+		},
 	}
 }
 
@@ -60,6 +72,7 @@ func NewAESGCMAlgorithm(password string, salt [SALT_SIZE]byte) Algorithm {
 		DecryptFunc: func(data []byte) ([]byte, error) {
 			return AESGCMDecrypt(password, data)
 		},
+		KeyFunc: func() ([]byte, error) { return DeriveAESGCMKey(password, salt) },
 	}
 }
 
@@ -126,7 +139,7 @@ func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, 
 }
 
 func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
-	salt, iv, encrypted, err := ParseAESGCM(data)
+	salt, iv, encrypted, err := DecodeAESGCM(data)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +186,7 @@ func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte
 }
 
 func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
-	_, iv, encrypted, err := ParseAESGCM(data)
+	_, iv, encrypted, err := DecodeAESGCM(data)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +209,7 @@ func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
 	return decrypted, nil
 }
 
-func ParseAESGCM(data []byte) (salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte, err error) {
+func DecodeAESGCM(data []byte) (salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte, err error) {
 	salt = [SALT_SIZE]byte{}
 	iv = [IV_SIZE]byte{}
 
@@ -223,4 +236,8 @@ func EncodeAESGCM(salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte) ([]b
 	encoded := base64.StdEncoding.EncodeToString(payload)
 
 	return []byte(encoded), nil
+}
+
+func DeriveAESGCMKey(password string, salt [SALT_SIZE]byte) ([]byte, error) {
+	return pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
 }
