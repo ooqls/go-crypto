@@ -130,7 +130,7 @@ func RSADecrypt(data []byte) ([]byte, error) {
 }
 
 func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
-	derivedKey, err := pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
+	derivedKey, err := DeriveAESGCMKey(password, salt)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	derivedKey, err := pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
+	derivedKey, err := DeriveAESGCMKey(password, salt)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	decrypted, err := gcm.Open(data[:0], iv[:], encrypted, nil)
+	decrypted, err := gcm.Open(nil, iv[:], encrypted, nil)
 	if err != nil {
 		return nil, err
 	}
