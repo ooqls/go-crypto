@@ -130,7 +130,14 @@ func NewAESGCMAlgorithmWithKey(key []byte, salt [SALT_SIZE]byte) Algorithm {
 	}
 }
 
+func NewGCM(key []byte) (cipher.AEAD, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
 
+	return cipher.NewGCM(block)
+}
 
 func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
 	derivedKey, err := DeriveAESGCMKey(password, salt)
@@ -152,12 +159,7 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	aesCipher, err := aes.NewCipher(derivedKey)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(aesCipher)
+	gcm, err := NewGCM(derivedKey)
 	if err != nil {
 		return nil, err
 	}
@@ -172,12 +174,8 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 
 func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
 	glog.Printf("%s", string(key))
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := NewGCM(key)
 	if err != nil {
 		return nil, err
 	}
@@ -195,12 +193,7 @@ func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := NewGCM(key)
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +239,21 @@ func DeriveAESGCMKey(password string, salt [SALT_SIZE]byte) ([]byte, error) {
 	return pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
 }
 
+func VerifyGCMAESKey(key []byte) error {
+	_, err := NewGCM(key)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GenerateSalt() ([SALT_SIZE]byte, error) {
 	salt := [SALT_SIZE]byte{}
 	_, err := rand.Read(salt[:])
 	if err != nil {
 		return salt, err
 	}
-	
+
 	return salt, nil
 }
