@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	glog "log"
 
 	"github.com/ooqls/go-crypto/keys"
 	"github.com/ooqls/go-log"
@@ -52,16 +53,58 @@ func NewBase64Algorithm() Algorithm {
 	}
 }
 
+func NewDefaultAlgorithm() Algorithm {
+	return &GenericAlgorithm{
+		EncryptFunc: func(data []byte) ([]byte, error) {
+			return EncryptedData(data), nil
+		},
+		DecryptFunc: func(data []byte) ([]byte, error) {
+			return DecryptedData(data), nil
+		},
+	}
+}
+
+func Encrypt(data []byte) ([]byte, error) {
+	return EncryptedData([]byte(base64.StdEncoding.EncodeToString(data))), nil
+}
+
+func Decrypt(data []byte) ([]byte, error) {
+	strData := fmt.Sprintf("%b", data)
+	l.Info("got string data", zap.String("data", strData))
+	dec, err := base64.StdEncoding.DecodeString(strData)
+	return DecryptedData(dec), err
+}
+
 func NewRsaAlgorithm() Algorithm {
 	return &GenericAlgorithm{
 		EncryptFunc: RSAEncrypt,
 		DecryptFunc: RSADecrypt,
-		KeyFunc:     func() ([]byte, error) { 
+		KeyFunc: func() ([]byte, error) {
 			key := keys.RSA()
 			_, keyBytes := key.PrivateKey()
-			return keyBytes, nil 
+			return keyBytes, nil
 		},
 	}
+}
+
+func RSAEncrypt(data []byte) ([]byte, error) {
+	keys := keys.RSA()
+	enc, err := keys.Encrypt(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return EncryptedData(enc), nil
+}
+
+func RSADecrypt(data []byte) ([]byte, error) {
+	keys := keys.RSA()
+	dec, err := keys.Decrypt([]byte(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return DecryptedData(dec), nil
 }
 
 func NewAESGCMAlgorithm(password string, salt [SALT_SIZE]byte) Algorithm {
@@ -87,47 +130,7 @@ func NewAESGCMAlgorithmWithKey(key []byte, salt [SALT_SIZE]byte) Algorithm {
 	}
 }
 
-func NewDefaultAlgorithm() Algorithm {
-	return &GenericAlgorithm{
-		EncryptFunc: func(data []byte) ([]byte, error) {
-			return EncryptedData(data), nil
-		},
-		DecryptFunc: func(data []byte) ([]byte, error) {
-			return DecryptedData(data), nil
-		},
-	}
-}
 
-func Encrypt(data []byte) ([]byte, error) {
-	return EncryptedData([]byte(base64.StdEncoding.EncodeToString(data))), nil
-}
-
-func Decrypt(data []byte) ([]byte, error) {
-	strData := fmt.Sprintf("%b", data)
-	l.Info("got string data", zap.String("data", strData))
-	dec, err := base64.StdEncoding.DecodeString(strData)
-	return DecryptedData(dec), err
-}
-
-func RSAEncrypt(data []byte) ([]byte, error) {
-	keys := keys.RSA()
-	enc, err := keys.Encrypt(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return EncryptedData(enc), nil
-}
-
-func RSADecrypt(data []byte) ([]byte, error) {
-	keys := keys.RSA()
-	dec, err := keys.Decrypt([]byte(data))
-	if err != nil {
-		return nil, err
-	}
-
-	return DecryptedData(dec), nil
-}
 
 func AESGCMEncrypt(password string, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
 	derivedKey, err := DeriveAESGCMKey(password, salt)
@@ -168,6 +171,7 @@ func AESGCMDecrypt(password string, data []byte) ([]byte, error) {
 }
 
 func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte, error) {
+	glog.Printf("%s", string(key))
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -181,7 +185,7 @@ func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte
 	iv := [IV_SIZE]byte{}
 	rand.Read(iv[:])
 
-	encrypted := gcm.Seal(data[:0], iv[:], data, nil)
+	encrypted := gcm.Seal(nil, iv[:], data, nil)
 	return EncodeAESGCM(salt, iv, encrypted)
 }
 
@@ -240,4 +244,14 @@ func EncodeAESGCM(salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte) ([]b
 
 func DeriveAESGCMKey(password string, salt [SALT_SIZE]byte) ([]byte, error) {
 	return pbkdf2.Key(sha256.New, password, salt[:], 10000, 32)
+}
+
+func GenerateSalt() ([SALT_SIZE]byte, error) {
+	salt := [SALT_SIZE]byte{}
+	_, err := rand.Read(salt[:])
+	if err != nil {
+		return salt, err
+	}
+	
+	return salt, nil
 }
