@@ -16,6 +16,8 @@ func TestPcg32(t *testing.T) {
 	rng := NewPCG32(uint64(tSeed.UnixMilli()), uint64(tSeed2.UnixMilli()))
 	assert.NotNil(t, rng, "should be able to create rng")
 
+	assert.NotZerof(t, rng.Next(), "should be able to generate number")
+
 	for i := 0; i < 5; i++ {
 		log.Printf("%d", rng.Next())
 	}
@@ -25,6 +27,18 @@ func TestPcg32(t *testing.T) {
 	notZero := false
 	for i := range 20 {
 		if buff[i] != 0 {
+			notZero = true
+			break
+		}
+	}
+	assert.True(t, notZero, "should be able to read")
+
+	buff2 := make([]byte, 20)
+	rng.Read(buff2)
+
+	notZero = false
+	for i := range 20 {
+		if buff2[i] != 0 {
 			notZero = true
 			break
 		}

@@ -52,23 +52,38 @@ func next() uint32 {
 type PCG32 struct {
 	state uint64
 	inc   uint64
+	m     *sync.Mutex
 }
 
 func NewPCG32(seed, seq uint64) *PCG32 {
-	p := &PCG32{}
+	p := &PCG32{
+		m: &sync.Mutex{},
+		inc: (seq << 1) | 1,
+		state: 0,
+	}
 	p.Seed(seed, seq)
 	return p
 }
 
 func (p *PCG32) Seed(seed, seq uint64) {
-	m.Lock()
-	defer m.Unlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 
-	state = 0
-	inc = (seq << 1) | 1
-	next()
-	state += seed
-	next()
+	p.state = 0
+	p.inc = (seq << 1) | 1
+	p.Next()
+	p.state += seed
+	p.Next()
+}
+
+func (p *PCG32) Read(buff []byte) int {
+	for i := 0; i < len(buff); i += 4 {
+		var temp [4]byte
+		binary.LittleEndian.PutUint32(temp[:], p.Next())
+		copy(buff[i:], temp[:])
+	}
+
+	return len(buff)
 }
 
 func (p *PCG32) Next() uint32 {
