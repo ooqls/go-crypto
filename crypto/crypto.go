@@ -4,11 +4,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/pbkdf2"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	glog "log"
+	"math/rand/v2"
+	"time"
 
 	"github.com/ooqls/go-crypto/keys"
 	"github.com/ooqls/go-log"
@@ -180,11 +182,10 @@ func AESGCMEncryptWithKey(key []byte, salt [SALT_SIZE]byte, data []byte) ([]byte
 		return nil, err
 	}
 
-	iv := [IV_SIZE]byte{}
-	rand.Read(iv[:])
+	iv := PCG32Bytes(IV_SIZE, time.Now(), 0)
 
 	encrypted := gcm.Seal(nil, iv[:], data, nil)
-	return EncodeAESGCM(salt, iv, encrypted)
+	return EncodeAESGCM(salt, [IV_SIZE]byte(iv), encrypted)
 }
 
 func AESGCMDecryptWithKey(key, data []byte) ([]byte, error) {
@@ -248,12 +249,36 @@ func VerifyGCMAESKey(key []byte) error {
 	return nil
 }
 
-func GenerateSalt() ([SALT_SIZE]byte, error) {
-	salt := [SALT_SIZE]byte{}
-	_, err := rand.Read(salt[:])
-	if err != nil {
-		return salt, err
+func PCG32Bytes(size int, tSeed time.Time, seq int) []byte {
+	//rseed1 := uint64(tSeed.UnixMilli())
+	//rseed2 := uint64(tSeed.Add(60 * time.Second).UnixMilli())
+
+	r := NewPCG32(0, 0)
+	buff := []byte{}
+
+	for f := 0; f < seq; f++ {
+		r.Next()
 	}
 
-	return salt, nil
+	for i := 0; i < size; i += 4 {
+		value := r.Next()
+		var valueBytes [4]byte
+		binary.LittleEndian.PutUint32(valueBytes[:], value)
+		buff = append(buff, valueBytes[:]...)
+		l.Info("value", zap.Uint32("value", value))
+	}
+
+	if len(buff) > size {
+		return buff[:size]
+	}
+
+	return buff
+}
+
+func RandomNum(tSeed time.Time) uint64 {
+	rseed1 := uint64(tSeed.UnixMilli())
+	rseed2 := uint64(tSeed.Add(60 * time.Second).UnixMilli())
+
+	r := rand.NewPCG(rseed1, rseed2)
+	return r.Uint64()
 }
