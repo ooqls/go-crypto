@@ -127,3 +127,21 @@ func (r *RSAKey) PublicKey() (rsa.PublicKey, []byte) {
 func (r *RSAKey) PrivateKey() (rsa.PrivateKey, []byte) {
 	return r.privkey, x509.MarshalPKCS1PrivateKey(&r.privkey)
 }
+
+func (r *RSAKey) Pem() ([]byte, []byte) {
+	privKeyBytes := x509.MarshalPKCS1PrivateKey(&r.privkey)
+	privKeyBlock := pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: privKeyBytes,
+	}
+	privKeyPem := pem.EncodeToMemory(&privKeyBlock)
+
+	pubKeyBytes := x509.MarshalPKCS1PublicKey(&r.pubkey)
+	pubKeyBlock := pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: pubKeyBytes,
+	}
+	pubKeyPem := pem.EncodeToMemory(&pubKeyBlock)
+
+	return privKeyPem, pubKeyPem
+}
