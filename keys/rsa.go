@@ -35,10 +35,7 @@ func NewRsaKeyPemBytes() ([]byte, []byte, error) {
 	})
 
 	// Encode public key to PEM format
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-	if err != nil {
-		return nil, nil, err
-	}
+	publicKeyBytes := x509.MarshalPKCS1PublicKey(&key.PublicKey)
 	publicKeyPem := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PUBLIC KEY",
 		Bytes: publicKeyBytes,
@@ -71,14 +68,9 @@ func ParseRSA(privPem, pubPem []byte) (*RSAKey, error) {
 	if pubBlock == nil || (pubBlock.Type != "RSA PUBLIC KEY" && pubBlock.Type != "PUBLIC KEY") {
 		return nil, fmt.Errorf("failed to decode PEM block containing RSA public key")
 	}
-	pubI, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
+	pub, err := x509.ParsePKCS1PublicKey(pubBlock.Bytes)
 	if err != nil {
 		return nil, err
-	}
-
-	pub, ok := pubI.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("public key is not type RSA")
 	}
 
 	r := NewRand(int64(priv.D.Int64()))
