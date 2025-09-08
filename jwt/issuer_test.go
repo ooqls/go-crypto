@@ -5,26 +5,16 @@ import (
 
 	"github.com/ooqls/go-crypto/keys"
 	"github.com/ooqls/go-crypto/testutils"
-	"github.com/ooqls/go-registry"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIsIssuer(t *testing.T) {
 	testutils.InitKeys()
-//	ca, err := keys.CreateX509CA()
+	//	ca, err := keys.CreateX509CA()
 	//assert.Nil(t, err)
 
 	//cert, err:= keys.CreateX509(*ca)
 	//assert.Nil(t, err)
-
-	
-	registry.Set(registry.Registry{
-		TokenConfiguration: registry.TokenConfiguration{
-			Audience: []string{"aud", "aud2"},
-			Issuer:   "issuer1",
-			ValidityDurationSeconds: 60 * 60,
-		},
-	})
 
 	subj := "123"
 	issuer := NewDefaultJwtTokenIssuer[map[string]string]()
@@ -36,7 +26,7 @@ func TestIsIssuer(t *testing.T) {
 	tokenStr, _, err := issuer.IssueToken(subj, map[string]string{
 		"test": "hello",
 	})
-	
+
 	assert.Nil(t, err)
 
 	jwtToken, claims, err := issuer.Decrypt(tokenStr)
