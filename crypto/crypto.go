@@ -211,18 +211,14 @@ func DecodeAESGCM(data []byte) (salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypte
 	salt = [SALT_SIZE]byte{}
 	iv = [IV_SIZE]byte{}
 
-	decoded, err := base64.StdEncoding.DecodeString(string(data))
-	if err != nil {
-		return salt, iv, encrypted, ErrInvalidData
-	}
 
-	if len(decoded) < SALT_SIZE+IV_SIZE {
+	if len(data) < SALT_SIZE+IV_SIZE {
 		return salt, iv, encrypted, ErrDataTooShort
 	}
 
-	copy(salt[:], decoded[:SALT_SIZE])
-	copy(iv[:], decoded[SALT_SIZE:SALT_SIZE+IV_SIZE])
-	encrypted = decoded[SALT_SIZE+IV_SIZE:]
+	copy(salt[:], data[:SALT_SIZE])
+	copy(iv[:], data[SALT_SIZE:SALT_SIZE+IV_SIZE])
+	encrypted = data[SALT_SIZE+IV_SIZE:]
 
 	return
 }
@@ -231,9 +227,7 @@ func EncodeAESGCM(salt [SALT_SIZE]byte, iv [IV_SIZE]byte, encrypted []byte) ([]b
 	payload := append(salt[:], iv[:]...)
 	payload = append(payload, encrypted...)
 
-	encoded := base64.StdEncoding.EncodeToString(payload)
-
-	return []byte(encoded), nil
+	return payload, nil
 }
 
 func DeriveAESGCMKey(password string, salt [SALT_SIZE]byte) ([]byte, error) {
