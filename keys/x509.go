@@ -230,10 +230,15 @@ func ParseX509File(filename string) (*X509, error) {
 
 func ParseX509Bytes(pemB []byte) (*X509, error) {
 
-	privateKeyblock, certBlock := pem.Decode(pemB)
+	privateKeyblock, rest := pem.Decode(pemB)
 
-	if privateKeyblock == nil || certBlock == nil {
+	if privateKeyblock == nil || rest == nil {
 		return nil, fmt.Errorf("failed to parse PEM block containing the key or certificate")
+	}
+
+	certBlock, _ := pem.Decode(rest)
+	if certBlock == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing the certificate")
 	}
 
 	priv, err := x509.ParsePKCS1PrivateKey(privateKeyblock.Bytes)
@@ -241,7 +246,7 @@ func ParseX509Bytes(pemB []byte) (*X509, error) {
 		return nil, err
 	}
 
-	crt, err := x509.ParseCertificate(certBlock)
+	crt, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
 		return nil, err
 	}

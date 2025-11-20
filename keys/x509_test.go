@@ -11,6 +11,12 @@ func TestX509_CreateX509(t *testing.T) {
 	assert.Nil(t, err, "should be able to create CA")
 	assert.NotNil(t, ca, "should be able to create CA")
 
+	key, cert := ca.Pem()
+	assert.NotNil(t, key, "CA private key PEM should not be nil")
+	assert.NotNil(t, cert, "CA certificate PEM should not be nil")
+
+	assert.Nilf(t, InitCA(key, cert), "should be able to initialize CA from PEM")
+
 	x509, err := CreateX509(*ca)
 	assert.Nil(t, err, "should be able to create x509")
 	assert.NotNil(t, x509, "should be able to create x509")
